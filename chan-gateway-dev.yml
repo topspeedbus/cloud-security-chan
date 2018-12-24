@@ -1,12 +1,2 @@
-spring:
-  http:
-    encoding:
-      charset: UTF-8
-      force: true
-      enabled: true
-
-zuul:
-  host:
-    socket-timeout-millis: 60000
-    connect-timeout-millis: 60000
-  forceOriginalQueryStringEncoding: true
+server:
+  port: 3000
