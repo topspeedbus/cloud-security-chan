@@ -1,31 +1,27 @@
 spring:
   datasource:
-    type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: 123
-    url: jdbc:mysql://127.0.0.1:3306/pig?characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false
     druid:
+      connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+      filter: stat,wall,log4j
       initial-size: 5
-      min-idle: 5
       max-active: 30
+      max-pool-prepared-statement-per-connection-size: 20
       max-wait: 60000
-      time-between-eviction-runs-millis: 60000
       min-evictable-idle-time-millis: 300000
-      validation-query: SELECT 1 FROM DUAL
-      test-while-idle: true
+      min-idle: 5
+      pool-prepared-statements: true
       test-on-borrow: true
       test-on-return: false
-      pool-prepared-statements: true
-      max-pool-prepared-statement-per-connection-size: 20
-      filter: stat,wall,log4j
-      connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
-
+      test-while-idle: true
+      time-between-eviction-runs-millis: 60000
+      validation-query: SELECT 1 FROM DUAL
+    password: 123
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://127.0.0.1:3306/pig?characterEncoding=utf8&serverTimezone=UTC&useSSL=false
+    username: root
   redis:
-    host: 127.0.0.1
-    port: 6379
     database: 0
-    jedis:
-      pool:
-        max-active: 10
+    host: localhost
+    port: 6379
 
