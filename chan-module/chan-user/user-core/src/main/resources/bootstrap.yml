@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: '@pom.artifactId@'
+  profiles:
+    active: dev
+  cloud:
+    config:
+      fail-fast: true
+      discovery:
+        service-id: chan-config
+        enabled: true
+      name: chan-user
+      profile: ${spring.profiles.active}
+#      label: ${spring.profiles.active}
+
+#logging:
+#  level: error
+---
+eureka:
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 20
+  client:
+    serviceUrl:
+      defaultZone: http://chan:243@localhost:2999/eureka
+    registry-fetch-interval-seconds: 10
+
+spring:
+  profiles: dev
+# mybatis \u914D\u7F6E
+mybatis:
+  type-aliases-package: com.chan.userapi.entity
+  mapper-locations: classpath:mapper/*.xml
+#配置通用mapper
+mapper:
+  identity: mysql
+  not-empty: true
+  mappers: com.chan.usercore.utils.UserTkMapper
+#配置分页插件
+pagehelper:
+  reasonable: true
+  support-methods-arguments: true
+  helper-dialect: mysql

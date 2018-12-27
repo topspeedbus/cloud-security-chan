@@ -1,0 +1,31 @@
+server:
+  port: 3001
+
+spring:
+  application:
+    name: @pom.artifactId@
+  profiles:
+    active: dev #使用本地文件必须配置这个，暂时这个模块不能读取dev
+  cloud:
+    config:
+      server:
+        git:
+          search-paths: /*
+          uri: https://gitee.com/everandneverfat/chan-config.git
+          default-label: ${spring.profiles.active}   #解决监控down
+          basedir: D:/config/base
+          force-pull: true
+
+---
+spring:
+  profiles: dev
+eureka:
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 20
+    instance-id: @pom.artifactId@
+    registry-fetch-interval-seconds: 10
+  client:
+    service-url:
+      defaultZone: http://chan:243@localhost:2999/eureka

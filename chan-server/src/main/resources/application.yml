@@ -1,0 +1,23 @@
+server:
+  port: 2999
+
+spring:
+  application:
+    name: @pom.artifactId@
+  cloud:
+    config:
+      discovery:
+        enabled: false
+  security:
+    user:
+      name: chan
+      password: 243
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: false    #因为自己本身就是发现中心，所以不注册
+    fetch-registry: false     #这个配置为集群是注册中心的相互注册用
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
