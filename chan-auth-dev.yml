@@ -22,8 +22,4 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     url: jdbc:mysql://127.0.0.1:3306/pig?characterEncoding=utf8&serverTimezone=UTC&useSSL=false
     username: root
-  redis:
-    database: 0
-    host: localhost
-    port: 6379
 
