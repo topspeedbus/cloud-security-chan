@@ -30,3 +30,10 @@ eureka:
 
 spring:
   profiles: dev
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+    pool.min-evictable-idle: 300000
+    pool.num-tests-per-eviction-run: 3
+    pool.time-between-eviction-runs: 60000

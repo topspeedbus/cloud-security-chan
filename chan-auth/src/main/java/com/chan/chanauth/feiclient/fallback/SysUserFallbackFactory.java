@@ -1,7 +1,7 @@
 package com.chan.chanauth.feiclient.fallback;
 
 import com.chan.chanauth.feiclient.SysUserClient;
-import com.chan.userapi.entity.SysUser;
+import com.chan.userapi.vo.UserVO;
 import feign.hystrix.FallbackFactory;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,7 +17,7 @@ public class SysUserFallbackFactory implements FallbackFactory<SysUserClient> {
         return new SysUserClient() {
 
             @Override
-            public SysUser getUserInfoByUserName(String userName) {
+            public UserVO getUserInfoByUserName(String userName) {
                 log.error("auth 调用 getUserInfoByUserName报错，userName：{}, cause：{}", userName,  cause);
                 return null;
             }

@@ -1,6 +1,6 @@
 package com.chan.usercore.service;
 
-import com.chan.userapi.entity.SysUser;
+import com.chan.userapi.vo.UserVO;
 
 /**
  * @version 1.0
@@ -13,5 +13,5 @@ public interface UserService {
      * @param userName
      * @return
      */
-    SysUser getUserInfoByName(String userName);
+    UserVO getUserInfoByName(String userName);
 }

@@ -1,6 +1,7 @@
 package com.chan.usercore.controller;
 
 import com.chan.userapi.entity.SysUser;
+import com.chan.userapi.vo.UserVO;
 import com.chan.usercore.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,8 +24,8 @@ public class UserController {
     /**
      * 根据用户名获取用户信息
      */
-    @GetMapping("{userName}")
-    public SysUser getUserInfoByName(@PathVariable("userName") String userName) {
+    @GetMapping("getUserByName/{userName}")
+    public UserVO getUserInfoByName(@PathVariable("userName") String userName) {
         return userService.getUserInfoByName(userName);
     }
 }
