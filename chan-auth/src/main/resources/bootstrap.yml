@@ -1,6 +1,6 @@
 spring:
   application:
-    name: '@pom.artifactId@'
+    name: chan-auth
   profiles:
     active: dev
   cloud:

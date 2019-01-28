@@ -1,28 +1,31 @@
 package com.chan.chanauth.config;
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import com.chan.common.constant.SecurityConstant;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.security.oauth2.common.ExpiringOAuth2RefreshToken;
 import org.springframework.security.oauth2.common.OAuth2AccessToken;
 import org.springframework.security.oauth2.common.OAuth2RefreshToken;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.AuthenticationKeyGenerator;
 import org.springframework.security.oauth2.provider.token.DefaultAuthenticationKeyGenerator;
 import org.springframework.security.oauth2.provider.token.TokenStore;
+import org.springframework.security.oauth2.provider.token.store.redis.JdkSerializationStrategy;
+import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStoreSerializationStrategy;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
- * @version 1.0
- * @auther chan
- * @Date 2019/1/2 16:20
+ * 处理redis 高版本废弃conn.set问题
  */
-@Slf4j
+@Component
 public class ChanRedisTokenStore implements TokenStore {
+
 
     private static final String ACCESS = "access:";
     private static final String AUTH_TO_ACCESS = "auth_to_access:";
@@ -34,28 +37,77 @@ public class ChanRedisTokenStore implements TokenStore {
     private static final String CLIENT_ID_TO_ACCESS = "client_id_to_access:";
     private static final String UNAME_TO_ACCESS = "uname_to_access:";
 
-    private RedisTemplate<String, Object> redisTemplate;
-
-    public RedisTemplate<String, Object> getRedisTemplate() {
-        return redisTemplate;
-    }
-
-    public void setRedisTemplate(RedisTemplate<String, Object> redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
-
+    private final RedisConnectionFactory connectionFactory;
     private AuthenticationKeyGenerator authenticationKeyGenerator = new DefaultAuthenticationKeyGenerator();
+    private RedisTokenStoreSerializationStrategy serializationStrategy = new JdkSerializationStrategy();
+
+    private String prefix = SecurityConstant.CHAN_PREFIX;
+
+    public ChanRedisTokenStore(RedisConnectionFactory connectionFactory) {
+        this.connectionFactory = connectionFactory;
+    }
 
     public void setAuthenticationKeyGenerator(AuthenticationKeyGenerator authenticationKeyGenerator) {
         this.authenticationKeyGenerator = authenticationKeyGenerator;
     }
 
+    public void setSerializationStrategy(RedisTokenStoreSerializationStrategy serializationStrategy) {
+        this.serializationStrategy = serializationStrategy;
+    }
+
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
+    }
+
+    private RedisConnection getConnection() {
+        return connectionFactory.getConnection();
+    }
+
+    private byte[] serialize(Object object) {
+        return serializationStrategy.serialize(object);
+    }
+
+    private byte[] serializeKey(String object) {
+        return serialize(prefix + object);
+    }
+
+    private OAuth2AccessToken deserializeAccessToken(byte[] bytes) {
+        return serializationStrategy.deserialize(bytes, OAuth2AccessToken.class);
+    }
+
+    private OAuth2Authentication deserializeAuthentication(byte[] bytes) {
+        return serializationStrategy.deserialize(bytes, OAuth2Authentication.class);
+    }
+
+    private OAuth2RefreshToken deserializeRefreshToken(byte[] bytes) {
+        return serializationStrategy.deserialize(bytes, OAuth2RefreshToken.class);
+    }
+
+    private byte[] serialize(String string) {
+        return serializationStrategy.serialize(string);
+    }
+
+    private String deserializeString(byte[] bytes) {
+        return serializationStrategy.deserializeString(bytes);
+    }
+
     @Override
     public OAuth2AccessToken getAccessToken(OAuth2Authentication authentication) {
         String key = authenticationKeyGenerator.extractKey(authentication);
-        OAuth2AccessToken accessToken = (OAuth2AccessToken) redisTemplate.opsForValue().get(AUTH_TO_ACCESS + key);
+        byte[] serializedKey = serializeKey(AUTH_TO_ACCESS + key);
+        byte[] bytes = null;
+        RedisConnection conn = getConnection();
+        try {
+            bytes = conn.get(serializedKey);
+        } finally {
+            conn.close();
+        }
+        OAuth2AccessToken accessToken = deserializeAccessToken(bytes);
         if (accessToken != null
                 && !key.equals(authenticationKeyGenerator.extractKey(readAuthentication(accessToken.getValue())))) {
+            // Keep the stores consistent (maybe the same user is
+            // represented by this authentication but the details have
+            // changed)
             storeAccessToken(accessToken, authentication);
         }
         return accessToken;
@@ -68,7 +120,15 @@ public class ChanRedisTokenStore implements TokenStore {
 
     @Override
     public OAuth2Authentication readAuthentication(String token) {
-        return (OAuth2Authentication) this.redisTemplate.opsForValue().get(AUTH + token);
+        byte[] bytes = null;
+        RedisConnection conn = getConnection();
+        try {
+            bytes = conn.get(serializeKey(AUTH + token));
+        } finally {
+            conn.close();
+        }
+        OAuth2Authentication auth = deserializeAuthentication(bytes);
+        return auth;
     }
 
     @Override
@@ -77,44 +137,76 @@ public class ChanRedisTokenStore implements TokenStore {
     }
 
     public OAuth2Authentication readAuthenticationForRefreshToken(String token) {
-        return (OAuth2Authentication) this.redisTemplate.opsForValue().get(REFRESH_AUTH + token);
+        RedisConnection conn = getConnection();
+        try {
+            byte[] bytes = conn.get(serializeKey(REFRESH_AUTH + token));
+            OAuth2Authentication auth = deserializeAuthentication(bytes);
+            return auth;
+        } finally {
+            conn.close();
+        }
     }
 
     @Override
     public void storeAccessToken(OAuth2AccessToken token, OAuth2Authentication authentication) {
+        byte[] serializedAccessToken = serialize(token);
+        byte[] serializedAuth = serialize(authentication);
+        byte[] accessKey = serializeKey(ACCESS + token.getValue());
+        byte[] authKey = serializeKey(AUTH + token.getValue());
+        byte[] authToAccessKey = serializeKey(AUTH_TO_ACCESS + authenticationKeyGenerator.extractKey(authentication));
+        byte[] approvalKey = serializeKey(UNAME_TO_ACCESS + getApprovalKey(authentication));
+        byte[] clientId = serializeKey(CLIENT_ID_TO_ACCESS + authentication.getOAuth2Request().getClientId());
 
-        this.redisTemplate.opsForValue().set(ACCESS + token.getValue(), token);
-        this.redisTemplate.opsForValue().set(AUTH + token.getValue(), authentication);
-        this.redisTemplate.opsForValue().set(AUTH_TO_ACCESS + authenticationKeyGenerator.extractKey(authentication), token);
-        if (!authentication.isClientOnly()) {
-            redisTemplate.opsForList().rightPush(UNAME_TO_ACCESS + getApprovalKey(authentication), token);
-        }
-
-        redisTemplate.opsForList().rightPush(CLIENT_ID_TO_ACCESS + authentication.getOAuth2Request().getClientId(), token);
-
-        if (token.getExpiration() != null) {
-
-            int seconds = token.getExpiresIn();
-            redisTemplate.expire(ACCESS + token.getValue(), seconds, TimeUnit.SECONDS);
-            redisTemplate.expire(AUTH + token.getValue(), seconds, TimeUnit.SECONDS);
-
-            redisTemplate.expire(AUTH_TO_ACCESS + authenticationKeyGenerator.extractKey(authentication), seconds, TimeUnit.SECONDS);
-            redisTemplate.expire(CLIENT_ID_TO_ACCESS + authentication.getOAuth2Request().getClientId(), seconds, TimeUnit.SECONDS);
-            redisTemplate.expire(UNAME_TO_ACCESS + getApprovalKey(authentication), seconds, TimeUnit.SECONDS);
-        }
-        if (token.getRefreshToken() != null && token.getRefreshToken().getValue() != null) {
-            this.redisTemplate.opsForValue().set(REFRESH_TO_ACCESS + token.getRefreshToken().getValue(), token.getValue());
-            this.redisTemplate.opsForValue().set(ACCESS_TO_REFRESH + token.getValue(), token.getRefreshToken().getValue());
+        RedisConnection conn = getConnection();
+        try {
+            conn.openPipeline();
+            conn.stringCommands().set(accessKey, serializedAccessToken);
+            conn.stringCommands().set(authKey, serializedAuth);
+            conn.stringCommands().set(authToAccessKey, serializedAccessToken);
+            if (!authentication.isClientOnly()) {
+                conn.rPush(approvalKey, serializedAccessToken);
+            }
+            conn.rPush(clientId, serializedAccessToken);
+            if (token.getExpiration() != null) {
+                int seconds = token.getExpiresIn();
+                conn.expire(accessKey, seconds);
+                conn.expire(authKey, seconds);
+                conn.expire(authToAccessKey, seconds);
+                conn.expire(clientId, seconds);
+                conn.expire(approvalKey, seconds);
+            }
+            OAuth2RefreshToken refreshToken = token.getRefreshToken();
+            if (refreshToken != null && refreshToken.getValue() != null) {
+                byte[] refresh = serialize(token.getRefreshToken().getValue());
+                byte[] auth = serialize(token.getValue());
+                byte[] refreshToAccessKey = serializeKey(REFRESH_TO_ACCESS + token.getRefreshToken().getValue());
+                conn.stringCommands().set(refreshToAccessKey, auth);
+                byte[] accessToRefreshKey = serializeKey(ACCESS_TO_REFRESH + token.getValue());
+                conn.stringCommands().set(accessToRefreshKey, refresh);
+                if (refreshToken instanceof ExpiringOAuth2RefreshToken) {
+                    ExpiringOAuth2RefreshToken expiringRefreshToken = (ExpiringOAuth2RefreshToken) refreshToken;
+                    Date expiration = expiringRefreshToken.getExpiration();
+                    if (expiration != null) {
+                        int seconds = Long.valueOf((expiration.getTime() - System.currentTimeMillis()) / 1000L)
+                                .intValue();
+                        conn.expire(refreshToAccessKey, seconds);
+                        conn.expire(accessToRefreshKey, seconds);
+                    }
+                }
+            }
+            conn.closePipeline();
+        } finally {
+            conn.close();
         }
     }
 
-    private String getApprovalKey(OAuth2Authentication authentication) {
-        String userName = authentication.getUserAuthentication() == null ? "" : authentication.getUserAuthentication()
-                .getName();
+    private static String getApprovalKey(OAuth2Authentication authentication) {
+        String userName = authentication.getUserAuthentication() == null ? ""
+                : authentication.getUserAuthentication().getName();
         return getApprovalKey(authentication.getOAuth2Request().getClientId(), userName);
     }
 
-    private String getApprovalKey(String clientId, String userName) {
+    private static String getApprovalKey(String clientId, String userName) {
         return clientId + (userName == null ? "" : ":" + userName);
     }
 
@@ -125,39 +217,91 @@ public class ChanRedisTokenStore implements TokenStore {
 
     @Override
     public OAuth2AccessToken readAccessToken(String tokenValue) {
-        return (OAuth2AccessToken) this.redisTemplate.opsForValue().get(ACCESS + tokenValue);
+        byte[] key = serializeKey(ACCESS + tokenValue);
+        byte[] bytes = null;
+        RedisConnection conn = getConnection();
+        try {
+            bytes = conn.get(key);
+        } finally {
+            conn.close();
+        }
+        OAuth2AccessToken accessToken = deserializeAccessToken(bytes);
+        return accessToken;
     }
 
     public void removeAccessToken(String tokenValue) {
-        OAuth2AccessToken removed = (OAuth2AccessToken) redisTemplate.opsForValue().get(ACCESS + tokenValue);
-        // caller to do that
-        OAuth2Authentication authentication = (OAuth2Authentication) this.redisTemplate.opsForValue().get(AUTH + tokenValue);
+        byte[] accessKey = serializeKey(ACCESS + tokenValue);
+        byte[] authKey = serializeKey(AUTH + tokenValue);
+        byte[] accessToRefreshKey = serializeKey(ACCESS_TO_REFRESH + tokenValue);
+        RedisConnection conn = getConnection();
+        try {
+            conn.openPipeline();
+            conn.get(accessKey);
+            conn.get(authKey);
+            conn.del(accessKey);
+            conn.del(accessToRefreshKey);
+            // Don't remove the refresh token - it's up to the caller to do that
+            conn.del(authKey);
+            List<Object> results = conn.closePipeline();
+            byte[] access = (byte[]) results.get(0);
+            byte[] auth = (byte[]) results.get(1);
 
-        this.redisTemplate.delete(AUTH + tokenValue);
-        redisTemplate.delete(ACCESS + tokenValue);
-        this.redisTemplate.delete(ACCESS_TO_REFRESH + tokenValue);
-
-        if (authentication != null) {
-            this.redisTemplate.delete(AUTH_TO_ACCESS + authenticationKeyGenerator.extractKey(authentication));
-
-            String clientId = authentication.getOAuth2Request().getClientId();
-            redisTemplate.opsForList().leftPop(UNAME_TO_ACCESS + getApprovalKey(clientId, authentication.getName()));
-
-            redisTemplate.opsForList().leftPop(CLIENT_ID_TO_ACCESS + clientId);
-
-            this.redisTemplate.delete(AUTH_TO_ACCESS + authenticationKeyGenerator.extractKey(authentication));
+            OAuth2Authentication authentication = deserializeAuthentication(auth);
+            if (authentication != null) {
+                String key = authenticationKeyGenerator.extractKey(authentication);
+                byte[] authToAccessKey = serializeKey(AUTH_TO_ACCESS + key);
+                byte[] unameKey = serializeKey(UNAME_TO_ACCESS + getApprovalKey(authentication));
+                byte[] clientId = serializeKey(CLIENT_ID_TO_ACCESS + authentication.getOAuth2Request().getClientId());
+                conn.openPipeline();
+                conn.del(authToAccessKey);
+                conn.lRem(unameKey, 1, access);
+                conn.lRem(clientId, 1, access);
+                conn.del(serialize(ACCESS + key));
+                conn.closePipeline();
+            }
+        } finally {
+            conn.close();
         }
     }
 
     @Override
     public void storeRefreshToken(OAuth2RefreshToken refreshToken, OAuth2Authentication authentication) {
-        this.redisTemplate.opsForValue().set(REFRESH + refreshToken.getValue(), refreshToken);
-        this.redisTemplate.opsForValue().set(REFRESH_AUTH + refreshToken.getValue(), authentication);
+        byte[] refreshKey = serializeKey(REFRESH + refreshToken.getValue());
+        byte[] refreshAuthKey = serializeKey(REFRESH_AUTH + refreshToken.getValue());
+        byte[] serializedRefreshToken = serialize(refreshToken);
+        RedisConnection conn = getConnection();
+        try {
+            conn.openPipeline();
+            conn.stringCommands().set(refreshKey, serializedRefreshToken);
+            conn.stringCommands().set(refreshAuthKey, serialize(authentication));
+            if (refreshToken instanceof ExpiringOAuth2RefreshToken) {
+                ExpiringOAuth2RefreshToken expiringRefreshToken = (ExpiringOAuth2RefreshToken) refreshToken;
+                Date expiration = expiringRefreshToken.getExpiration();
+                if (expiration != null) {
+                    int seconds = Long.valueOf((expiration.getTime() - System.currentTimeMillis()) / 1000L)
+                            .intValue();
+                    conn.expire(refreshKey, seconds);
+                    conn.expire(refreshAuthKey, seconds);
+                }
+            }
+            conn.closePipeline();
+        } finally {
+            conn.close();
+        }
     }
 
     @Override
     public OAuth2RefreshToken readRefreshToken(String tokenValue) {
-        return (OAuth2RefreshToken) this.redisTemplate.opsForValue().get(REFRESH + tokenValue);
+        byte[] key = serializeKey(REFRESH + tokenValue);
+        byte[] bytes = null;
+        RedisConnection conn = getConnection();
+        try {
+            bytes = conn.get(key);
+        } finally {
+            conn.close();
+        }
+        OAuth2RefreshToken refreshToken = deserializeRefreshToken(bytes);
+        return refreshToken;
     }
 
     @Override
@@ -166,9 +310,21 @@ public class ChanRedisTokenStore implements TokenStore {
     }
 
     public void removeRefreshToken(String tokenValue) {
-        this.redisTemplate.delete(REFRESH + tokenValue);
-        this.redisTemplate.delete(REFRESH_AUTH + tokenValue);
-        this.redisTemplate.delete(REFRESH_TO_ACCESS + tokenValue);
+        byte[] refreshKey = serializeKey(REFRESH + tokenValue);
+        byte[] refreshAuthKey = serializeKey(REFRESH_AUTH + tokenValue);
+        byte[] refresh2AccessKey = serializeKey(REFRESH_TO_ACCESS + tokenValue);
+        byte[] access2RefreshKey = serializeKey(ACCESS_TO_REFRESH + tokenValue);
+        RedisConnection conn = getConnection();
+        try {
+            conn.openPipeline();
+            conn.del(refreshKey);
+            conn.del(refreshAuthKey);
+            conn.del(refresh2AccessKey);
+            conn.del(access2RefreshKey);
+            conn.closePipeline();
+        } finally {
+            conn.close();
+        }
     }
 
     @Override
@@ -177,44 +333,66 @@ public class ChanRedisTokenStore implements TokenStore {
     }
 
     private void removeAccessTokenUsingRefreshToken(String refreshToken) {
-
-        String token = (String) this.redisTemplate.opsForValue().get(REFRESH_TO_ACCESS + refreshToken);
-
-        if (token != null) {
-            redisTemplate.delete(ACCESS + token);
+        byte[] key = serializeKey(REFRESH_TO_ACCESS + refreshToken);
+        List<Object> results = null;
+        RedisConnection conn = getConnection();
+        try {
+            conn.openPipeline();
+            conn.get(key);
+            conn.del(key);
+            results = conn.closePipeline();
+        } finally {
+            conn.close();
+        }
+        if (results == null) {
+            return;
+        }
+        byte[] bytes = (byte[]) results.get(0);
+        String accessToken = deserializeString(bytes);
+        if (accessToken != null) {
+            removeAccessToken(accessToken);
         }
     }
 
     @Override
     public Collection<OAuth2AccessToken> findTokensByClientIdAndUserName(String clientId, String userName) {
-        List<Object> result = redisTemplate.opsForList().range(UNAME_TO_ACCESS + getApprovalKey(clientId, userName), 0, -1);
-
-        if (result == null || result.size() == 0) {
-            return Collections.emptySet();
+        byte[] approvalKey = serializeKey(UNAME_TO_ACCESS + getApprovalKey(clientId, userName));
+        List<byte[]> byteList = null;
+        RedisConnection conn = getConnection();
+        try {
+            byteList = conn.lRange(approvalKey, 0, -1);
+        } finally {
+            conn.close();
         }
-        List<OAuth2AccessToken> accessTokens = new ArrayList<>(result.size());
-
-        for (Iterator<Object> it = result.iterator(); it.hasNext(); ) {
-            OAuth2AccessToken accessToken = (OAuth2AccessToken) it.next();
+        if (byteList == null || byteList.size() == 0) {
+            return Collections.<OAuth2AccessToken> emptySet();
+        }
+        List<OAuth2AccessToken> accessTokens = new ArrayList<OAuth2AccessToken>(byteList.size());
+        for (byte[] bytes : byteList) {
+            OAuth2AccessToken accessToken = deserializeAccessToken(bytes);
             accessTokens.add(accessToken);
         }
-
-        return Collections.unmodifiableCollection(accessTokens);
+        return Collections.<OAuth2AccessToken> unmodifiableCollection(accessTokens);
     }
 
     @Override
     public Collection<OAuth2AccessToken> findTokensByClientId(String clientId) {
-        List<Object> result = redisTemplate.opsForList().range((CLIENT_ID_TO_ACCESS + clientId), 0, -1);
-
-        if (result == null || result.size() == 0) {
-            return Collections.emptySet();
+        byte[] key = serializeKey(CLIENT_ID_TO_ACCESS + clientId);
+        List<byte[]> byteList = null;
+        RedisConnection conn = getConnection();
+        try {
+            byteList = conn.lRange(key, 0, -1);
+        } finally {
+            conn.close();
         }
-        List<OAuth2AccessToken> accessTokens = new ArrayList<>(result.size());
-        for (Iterator<Object> it = result.iterator(); it.hasNext(); ) {
-            OAuth2AccessToken accessToken = (OAuth2AccessToken) it.next();
+        if (byteList == null || byteList.size() == 0) {
+            return Collections.<OAuth2AccessToken> emptySet();
+        }
+        List<OAuth2AccessToken> accessTokens = new ArrayList<OAuth2AccessToken>(byteList.size());
+        for (byte[] bytes : byteList) {
+            OAuth2AccessToken accessToken = deserializeAccessToken(bytes);
             accessTokens.add(accessToken);
         }
-
-        return Collections.unmodifiableCollection(accessTokens);
+        return Collections.<OAuth2AccessToken> unmodifiableCollection(accessTokens);
     }
 }

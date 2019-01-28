@@ -1,6 +1,6 @@
 spring:
   application:
-    name: '@pom.artifactId@'
+    name: user-core
   profiles:
     active: dev
   cloud:

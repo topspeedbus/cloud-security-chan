@@ -24,6 +24,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserVO user = sysUserClient.getUserInfoByUserName(username);
+        if (null == user) {
+            throw new RuntimeException("没有该用户！！");
+        }
         return new UserDetailsImpl(user);
     }
 }

@@ -8,8 +8,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.common.DefaultOAuth2AccessToken;
 import org.springframework.security.oauth2.config.annotation.configurers.ClientDetailsServiceConfigurer;
@@ -18,12 +16,12 @@ import org.springframework.security.oauth2.config.annotation.web.configuration.E
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerEndpointsConfigurer;
 import org.springframework.security.oauth2.config.annotation.web.configurers.AuthorizationServerSecurityConfigurer;
 import org.springframework.security.oauth2.provider.client.JdbcClientDetailsService;
-import org.springframework.security.oauth2.provider.token.AuthorizationServerTokenServices;
+import org.springframework.security.oauth2.provider.error.DefaultWebResponseExceptionTranslator;
+import org.springframework.security.oauth2.provider.error.WebResponseExceptionTranslator;
 import org.springframework.security.oauth2.provider.token.TokenEnhancer;
 import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
-import org.springframework.security.oauth2.provider.token.store.redis.RedisTokenStore;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
@@ -81,6 +79,7 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
                 .authenticationManager(authenticationManager)
                 .reuseRefreshTokens(false)
                 .userDetailsService(userDetailsService);
+        endpoints.exceptionTranslator(webResponseExceptionTranslator());
     }
 
     /**
@@ -94,6 +93,8 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
     //
     //@Bean
     //public PasswordEncoder bCryptPasswordEncoder() {
+
+
     //    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     //}
 
@@ -116,7 +117,7 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
     public JwtAccessTokenConverter jwtAccessTokenConverter() {
         JwtAccessTokenConverter converter = new ChanJwtConverter();
         converter.setSigningKey(SecurityConstant.SIGN_KEY);
-        return  converter;
+        return converter;
     }
 
     /**
@@ -124,9 +125,7 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
      */
     @Bean
     public TokenStore redisTokenStore() {
-        RedisTokenStore tokenStore = new RedisTokenStore(redisConnectionFactory);
-        tokenStore.setPrefix(SecurityConstant.CHAN_PREFIX);
-        return tokenStore;
+        return new ChanRedisTokenStore(redisConnectionFactory);
     }
 
     /**
@@ -144,5 +143,10 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
             ((DefaultOAuth2AccessToken)accessToken).setAdditionalInformation(customInfo);
             return accessToken;
         };
+    }
+
+    @Bean
+    public WebResponseExceptionTranslator webResponseExceptionTranslator(){
+        return new DefaultWebResponseExceptionTranslator();
     }
 }

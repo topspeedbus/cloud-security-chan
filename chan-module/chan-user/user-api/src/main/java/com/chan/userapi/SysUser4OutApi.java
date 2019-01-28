@@ -14,7 +14,7 @@ public interface SysUser4OutApi {
     /**
      * 根据用户名查询用户信息
      */
-    String GET_USERINFO_BY_USERNAME = "admin/user/{userName}";
+    String GET_USERINFO_BY_USERNAME = "admin/user/getUserByName/{userName}";
     String GET_USERINFO_BY_USERNAME_METHOD = "get";
 
 }

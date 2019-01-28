@@ -9,8 +9,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import javax.annotation.Resource;
 
@@ -34,20 +32,13 @@ public class ChanSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter 
                 .and()
                 .authorizeRequests();
         ignorePropertiesConfig.getUrls().forEach(url -> registry.antMatchers(url).permitAll());
-        registry.antMatchers("/oauth/token").permitAll();
         registry.anyRequest().authenticated()
                 .and()
                 .csrf().disable();
     }
-
     @Bean
     @Override
     public AuthenticationManager authenticationManagerBean() throws Exception {
         return super.authenticationManagerBean();
     }
-
-    //@Bean
-    //public PasswordEncoder passwordEncoder() {
-    //    return  new BCryptPasswordEncoder();
-    //}
 }
