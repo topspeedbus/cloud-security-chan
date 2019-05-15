@@ -25,4 +25,5 @@ spring:
 ignore:
   urls:
     - /authentication/**
+    - /**/*.css
 
