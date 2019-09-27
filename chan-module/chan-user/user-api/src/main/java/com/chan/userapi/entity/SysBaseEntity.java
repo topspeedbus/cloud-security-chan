@@ -2,6 +2,7 @@ package com.chan.userapi.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
@@ -10,7 +11,7 @@ import java.util.Date;
  * @Date 2018/12/26 14:29
  */
 @Data
-public class SysBaseEntity {
+public class SysBaseEntity implements Serializable {
     private Date createTime;
     private Date updateTime;
     private String delFlag;

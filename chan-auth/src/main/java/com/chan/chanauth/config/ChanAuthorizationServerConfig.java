@@ -2,10 +2,12 @@ package com.chan.chanauth.config;
 
 import com.chan.chanauth.detail.UserDetailsImpl;
 import com.chan.common.constant.SecurityConstant;
+import lombok.SneakyThrows;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +24,7 @@ import org.springframework.security.oauth2.provider.token.TokenEnhancer;
 import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
+import sun.security.util.SecurityConstants;
 
 import javax.annotation.Resource;
 import javax.sql.DataSource;
@@ -49,10 +52,9 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
     private UserDetailsService userDetailsService;
 
     @Override
-    public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
-        security
+    public void configure(AuthorizationServerSecurityConfigurer oauthServer) {
+        oauthServer
                 .allowFormAuthenticationForClients()
-                .tokenKeyAccess("isAuthenticated()")
                 .checkTokenAccess("permitAll()");
     }
 
@@ -62,7 +64,8 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
      * @throws Exception
      */
     @Override
-    public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+    @SneakyThrows
+    public void configure(ClientDetailsServiceConfigurer clients) {
         JdbcClientDetailsService detailsService = new JdbcClientDetailsService(dataSource);
         detailsService.setSelectClientDetailsSql(SecurityConstant.DEFAULT_SELECT_STATEMENT);
         detailsService.setFindClientDetailsSql(SecurityConstant.DEFAULT_FIND_STATEMENT);
@@ -70,16 +73,15 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
     }
 
     @Override
-    public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
-        TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
-        tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer(), jwtAccessTokenConverter()));
+    public void configure(AuthorizationServerEndpointsConfigurer endpoints) {
         endpoints
+                .allowedTokenEndpointRequestMethods(HttpMethod.GET, HttpMethod.POST)
                 .tokenStore(redisTokenStore())
-                .tokenEnhancer(tokenEnhancerChain)
+                .tokenEnhancer(tokenEnhancer())
+                .userDetailsService(userDetailsService)
                 .authenticationManager(authenticationManager)
                 .reuseRefreshTokens(false)
-                .userDetailsService(userDetailsService);
-        endpoints.exceptionTranslator(webResponseExceptionTranslator());
+                .exceptionTranslator(webResponseExceptionTranslator());
     }
 
     /**
@@ -93,39 +95,17 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
     //
     //@Bean
     //public PasswordEncoder bCryptPasswordEncoder() {
-
-
     //    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     //}
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new PasswordEncoder() {
-            @Override
-            public String encode(CharSequence charSequence) {
-                return charSequence.toString();
-            }
-
-            @Override
-            public boolean matches(CharSequence charSequence, String s) {
-                return Objects.equals(charSequence.toString(),s);
-            }
-        };
-    }
-
-    @Bean
-    public JwtAccessTokenConverter jwtAccessTokenConverter() {
-        JwtAccessTokenConverter converter = new ChanJwtConverter();
-        converter.setSigningKey(SecurityConstant.SIGN_KEY);
-        return converter;
-    }
 
     /**
      * 配置单机版的redis-client
      */
     @Bean
     public TokenStore redisTokenStore() {
-        return new ChanRedisTokenStore(redisConnectionFactory);
+        ChanRedisTokenStore chanRedisTokenStore = new ChanRedisTokenStore(redisConnectionFactory);
+        chanRedisTokenStore.setPrefix(SecurityConstant.CHAN_PREFIX);
+        return chanRedisTokenStore;
     }
 
     /**

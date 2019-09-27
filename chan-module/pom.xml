@@ -13,6 +13,5 @@
     <packaging>pom</packaging>
     <modules>
         <module>chan-user</module>
-        <module>chan-user</module>
     </modules>
 </project>

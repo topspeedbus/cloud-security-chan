@@ -20,6 +20,19 @@ server:
   port: 3000
 spring:
   profiles: dev
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+      # =====================================
+      - id: chan-auth
+        uri: lb://chan-auth
+        predicates:
+        - Path=/oauth/**
+        filters:
 eureka:
   instance:
     prefer-ip-address: true

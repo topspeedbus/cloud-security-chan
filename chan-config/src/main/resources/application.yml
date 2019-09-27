@@ -11,8 +11,8 @@ spring:
       server:
         git:
           search-paths: /*
-          uri: https://gitee.com/everandneverfat/chan-config.git
-          default-label: ${spring.profiles.active}   #解决监控down
+          uri:
+          default-label: ${spring.profiles.active}   #解决监控downdd
           basedir: D:/config/base
           force-pull: true
 
@@ -28,4 +28,4 @@ eureka:
     registry-fetch-interval-seconds: 10
   client:
     service-url:
-      defaultZone: http://chan:243@localhost:2999/eureka
+      defaultZone: http://localhost:2999/eureka

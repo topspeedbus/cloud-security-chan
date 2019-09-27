@@ -25,7 +25,7 @@ eureka:
     lease-expiration-duration-in-seconds: 20
   client:
     serviceUrl:
-      defaultZone: http://chan:243@localhost:2999/eureka
+      defaultZone: http://localhost:2999/eureka
     registry-fetch-interval-seconds: 10
 
 spring:

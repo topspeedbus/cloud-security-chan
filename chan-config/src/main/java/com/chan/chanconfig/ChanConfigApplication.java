@@ -9,10 +9,8 @@ import org.springframework.cloud.config.server.EnableConfigServer;
 @EnableDiscoveryClient
 @EnableConfigServer
 public class ChanConfigApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(ChanConfigApplication.class, args);
     }
-
 }
 
