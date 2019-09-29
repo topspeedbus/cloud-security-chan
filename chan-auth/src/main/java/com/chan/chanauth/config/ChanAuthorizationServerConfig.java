@@ -74,15 +74,38 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
 
     @Override
     public void configure(AuthorizationServerEndpointsConfigurer endpoints) {
+        TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
+        tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer(), jwtAccessTokenConverter()));
         endpoints
-                .allowedTokenEndpointRequestMethods(HttpMethod.GET, HttpMethod.POST)
                 .tokenStore(redisTokenStore())
-                .tokenEnhancer(tokenEnhancer())
-                .userDetailsService(userDetailsService)
+                .tokenEnhancer(tokenEnhancerChain)
                 .authenticationManager(authenticationManager)
                 .reuseRefreshTokens(false)
-                .exceptionTranslator(webResponseExceptionTranslator());
+                .userDetailsService(userDetailsService);
+        endpoints.exceptionTranslator(webResponseExceptionTranslator());
     }
+
+    @Bean
+    public JwtAccessTokenConverter jwtAccessTokenConverter() {
+        JwtAccessTokenConverter converter = new ChanJwtConverter();
+        converter.setSigningKey(SecurityConstant.SIGN_KEY);
+        return converter;
+    }
+
+    //@Bean
+    //public PasswordEncoder passwordEncoder() {
+    //    return new PasswordEncoder() {
+    //        @Override
+    //        public String encode(CharSequence charSequence) {
+    //            return charSequence.toString();
+    //        }
+    //
+    //        @Override
+    //        public boolean matches(CharSequence charSequence, String s) {
+    //            return Objects.equals(charSequence.toString(),s);
+    //        }
+    //    };
+    //}
 
     /**
      * 配置认证加密方式
