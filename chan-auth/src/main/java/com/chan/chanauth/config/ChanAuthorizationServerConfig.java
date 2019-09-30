@@ -92,35 +92,6 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
         return converter;
     }
 
-    //@Bean
-    //public PasswordEncoder passwordEncoder() {
-    //    return new PasswordEncoder() {
-    //        @Override
-    //        public String encode(CharSequence charSequence) {
-    //            return charSequence.toString();
-    //        }
-    //
-    //        @Override
-    //        public boolean matches(CharSequence charSequence, String s) {
-    //            return Objects.equals(charSequence.toString(),s);
-    //        }
-    //    };
-    //}
-
-    /**
-     * 配置认证加密方式
-     * @return
-     */
-    //@Bean
-    //public PasswordEncoder passwordEncoder() {
-    //    return  new BCryptPasswordEncoder();
-    //}
-    //
-    //@Bean
-    //public PasswordEncoder bCryptPasswordEncoder() {
-    //    return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    //}
-
     /**
      * 配置单机版的redis-client
      */
@@ -142,6 +113,7 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
              UserDetailsImpl principal = (UserDetailsImpl) authentication.getUserAuthentication().getPrincipal();
             if (null != principal) {
                 customInfo.put("userId", principal.getUserId());
+                customInfo.put("userName", principal.getUsername());
             }
             ((DefaultOAuth2AccessToken)accessToken).setAdditionalInformation(customInfo);
             return accessToken;

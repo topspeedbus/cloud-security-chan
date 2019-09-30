@@ -11,12 +11,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import javax.annotation.Resource;
-import java.util.Objects;
 
-/**
+/**``
  * @version 1.0
  * @auther chan
  * @Date 2019/1/2 14:38
@@ -48,22 +48,16 @@ public class ChanSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter 
                 .passwordEncoder(passwordEncoder());
     }
 
+    /**
+     * 配置认证加密方式
+     * @return
+     * {SHA-1}b220ee2eb110e04999d6aaa434a9d965cd98a2e3
+     */
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new PasswordEncoder() {
-            @Override
-            public String encode(CharSequence charSequence) {
-                return charSequence.toString();
-            }
-
-            @Override
-            public boolean matches(CharSequence charSequence, String s) {
-                return Objects.equals(charSequence.toString(),s);
-            }
-        };
+      return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
-
 
     @Bean
     @Override

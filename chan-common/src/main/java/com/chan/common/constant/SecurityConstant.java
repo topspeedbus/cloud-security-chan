@@ -25,7 +25,7 @@ public interface SecurityConstant {
     /**
      * 前缀
      */
-    String CHAN_PREFIX = "chan_";
+    String CHAN_PREFIX = "chan_jie_";
     /**
      * 用户信息头
      */
