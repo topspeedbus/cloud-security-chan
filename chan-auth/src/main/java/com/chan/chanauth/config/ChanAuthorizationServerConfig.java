@@ -87,9 +87,7 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
 
     @Bean
     public JwtAccessTokenConverter jwtAccessTokenConverter() {
-        JwtAccessTokenConverter converter = new ChanJwtConverter();
-        converter.setSigningKey(SecurityConstant.SIGN_KEY);
-        return converter;
+        return new JwtAccessTokenConverter();
     }
 
     /**
@@ -109,7 +107,6 @@ public class ChanAuthorizationServerConfig extends AuthorizationServerConfigurer
     public TokenEnhancer tokenEnhancer() {
         return (accessToken, authentication) ->{
             Map<String, Object> customInfo = new HashMap<>(2);
-            customInfo.put("license", SecurityConstant.CHAN_LICENSE);
              UserDetailsImpl principal = (UserDetailsImpl) authentication.getUserAuthentication().getPrincipal();
             if (null != principal) {
                 customInfo.put("userId", principal.getUserId());
