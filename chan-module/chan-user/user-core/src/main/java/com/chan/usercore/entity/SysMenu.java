@@ -1,19 +1,21 @@
-package com.chan.userapi.entity;
+package com.chan.usercore.entity;
 
 import lombok.Data;
 
 import javax.persistence.Column;
+import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
 @Data
-public class SysMenu extends SysBaseEntity{
+//@Entity
+public class SysMenu extends SysBaseEntity {
 
-  @Id
-  @Column(name = "menu_id")
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Integer menuId;
+  //@Id
+  //@Column(name = "menu_id")
+  //@GeneratedValue(strategy = GenerationType.IDENTITY)
+  //private Integer menuId;
   private String name;
   private String permission;
   private String path;
