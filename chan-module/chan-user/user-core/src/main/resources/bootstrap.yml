@@ -1,4 +1,4 @@
-spring:
+ spring:
   application:
     name: user-core
   profiles:
@@ -25,20 +25,3 @@ eureka:
     serviceUrl:
       defaultZone: http://chan:243@localhost:2999/eureka
     registry-fetch-interval-seconds: 10
-
-spring:
-  profiles: dev
-# mybatis \u914D\u7F6E
-mybatis:
-  type-aliases-package: com.chan.userapi.entity
-  mapper-locations: classpath:mapper/*.xml
-#配置通用mapper
-mapper:
-  identity: mysql
-  not-empty: true
-  mappers: com.chan.usercore.utils.UserTkMapper
-#配置分页插件
-pagehelper:
-  reasonable: true
-  support-methods-arguments: true
-  helper-dialect: mysql

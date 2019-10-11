@@ -2,7 +2,7 @@ package com.chan.chanauth.service;
 
 import com.chan.chanauth.detail.UserDetailsImpl;
 import com.chan.chanauth.feiclient.SysUserClient;
-import com.chan.userapi.entity.SysUser;
+
 import com.chan.userapi.vo.UserVO;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

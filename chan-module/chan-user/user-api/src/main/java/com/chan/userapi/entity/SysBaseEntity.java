@@ -14,5 +14,5 @@ import java.util.Date;
 public class SysBaseEntity implements Serializable {
     private Date createTime;
     private Date updateTime;
-    private String delFlag;
+    private Integer delFlag;
 }

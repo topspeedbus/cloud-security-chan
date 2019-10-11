@@ -2,6 +2,7 @@ package com.chan.chanauth.feiclient;
 
 import com.chan.chanauth.feiclient.fallback.SysUserFallbackFactory;
 import com.chan.userapi.SysUser4OutApi;
+
 import com.chan.userapi.vo.UserVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

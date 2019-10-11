@@ -2,16 +2,18 @@ package com.chan.userapi.entity;
 
 import lombok.Data;
 
-import javax.persistence.Column;
+import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import java.util.Date;
 
 @Data
-public class SysUser extends SysBaseEntity{
+@Entity
+public class SysUser {
+
   @Id
-  @Column(name = "user_id")
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue(strategy= GenerationType.IDENTITY)
   private Integer userId;
   private String username;
   private String password;
@@ -19,4 +21,11 @@ public class SysUser extends SysBaseEntity{
   private String phone;
   private String avatar;
   private Integer deptId;
+  private Date createTime;
+  private Date updateTime;
+  private Integer lockFlag;
+  private Integer delFlag;
+  private String wxOpenid;
+  private String qqOpenid;
+
 }

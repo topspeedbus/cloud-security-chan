@@ -1,6 +1,6 @@
 package com.chan.usercore.controller;
 
-import com.chan.userapi.entity.SysUser;
+
 import com.chan.userapi.vo.UserVO;
 import com.chan.usercore.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;

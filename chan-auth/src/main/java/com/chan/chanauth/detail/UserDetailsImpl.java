@@ -24,7 +24,7 @@ public class UserDetailsImpl implements UserDetails {
     private Integer userId;
     private String username;
     private String password;
-    private String status;
+    private Integer status;
     private List<SysRole> roleList;
 
     public UserDetailsImpl(UserVO userVo) {
@@ -49,7 +49,7 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return !StringUtils.equals(CommonConstant.STATUS_LOCK, status);
+        return !CommonConstant.STATUS_LOCK.equals(status);
     }
 
     @Override
@@ -59,6 +59,6 @@ public class UserDetailsImpl implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return StringUtils.equals(CommonConstant.STATUS_NORMAL, status);
+        return CommonConstant.STATUS_NORMAL.equals(status);
     }
 }
